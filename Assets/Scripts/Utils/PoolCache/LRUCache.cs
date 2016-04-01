@@ -2,6 +2,8 @@
 ** Author： LiangZG
 ** Email :  game.liangzg@foxmail.com
 *********************************************************************************/
+
+using System;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,7 +31,7 @@ public class LRUCache<K , V>
 
     private Dictionary<K , Node<K , V>> cacheDic = new Dictionary<K, Node<K, V>>();
 
-
+    public Action<Node<K, V>> DestroyAction; 
     public LRUCache() : this(10)
     {} 
 
@@ -53,18 +55,25 @@ public class LRUCache<K , V>
     }
 
 
-    public V Get(K key)
+    public Node<K, V> GetNode(K key)
     {
         if (!cacheDic.ContainsKey(key))
         {
-            Debug.LogWarning("<<LRUCache , Get>> Cant find !! Key is " + key);
-            return default(V);
+//            Debug.LogWarning("<<LRUCache , GetNode>> Cant find !! Key is " + key);
+            return null;
         }
 
         Node<K, V> node = cacheDic[key];
         detach(node);
         attach(node);
-        return node.Value;
+        return node;
+    }
+
+
+    public V GetValue(K key)
+    {
+        Node<K, V> node = GetNode(key);
+        return node == null ? default(V) : node.Value;
     }
 
     /// <summary>
@@ -128,8 +137,48 @@ public class LRUCache<K , V>
         Node<K, V> curTail = tail.Previous;
         cacheDic.Remove(curTail.Key);
         detach(curTail);
+
+        if (DestroyAction != null) DestroyAction(curTail);
+
+      //重复迭代
+      ClearCache();
+    }
+    /// <summary>
+    /// 删除结点
+    /// </summary>
+    /// <param name="key"></param>
+    public void RemoveKey(K key)
+    {
+        if (!cacheDic.ContainsKey(key)) return;
+
+        Node<K, V> node = cacheDic[key];
+        detach(node);
+        cacheDic.Remove(key);
     }
 
+    /// <summary>
+    /// 设置容器大小
+    /// </summary>
+    /// <param name="max"></param>
+    /// <param name="update"></param>
+    public int Capactity
+    {
+        get { return capacityMaxCount; }
+        set
+        {
+            capacityMaxCount = value;
+            ClearCache();
+        }
+
+    }
+
+
+
+
+    /// <summary>
+    /// 容器是否已满，如果已满则返回true，否则false
+    /// </summary>
+    public bool Full {  get { return cacheDic.Count >= capacityMaxCount; }}
 
     public override string ToString()
     {
@@ -144,28 +193,5 @@ public class LRUCache<K , V>
         return sb.ToString();
     }
 
-    private class Node<K , V>
-    {
-        private K mKey;
-        private V mVaule;
 
-        public Node<K, V> Previous;
-        public Node<K, V> Next; 
-        
-        public Node() { }  
-
-        public Node(K key , V value)
-        {
-            mKey = key;
-            mVaule = value;
-        }
-
-        public K Key
-        {
-            get { return mKey; }
-        }
-
-
-        public V Value { get { return mVaule; } }
-    }
 }
